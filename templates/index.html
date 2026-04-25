@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deck Factory</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap');
+
+  :root {
+    --bg: #0B0F1A;
+    --surface: #131829;
+    --surface-2: #1A2035;
+    --border: #252D44;
+    --text: #E8ECF4;
+    --text-muted: #6B7A99;
+    --accent: #024AD8;
+    --accent-glow: rgba(59, 130, 246, 0.15);
+    --green: #22C55E;
+    --red: #EF4444;
+    --amber: #F59E0B;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.1;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+
+  /* Header */
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  h1 .accent { color: var(--accent); }
+
+  .subtitle {
+    font-size: 17px;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+    line-height: 1.5;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  /* Textarea */
+  textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 14px 16px;
+    resize: none;
+    min-height: 110px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  textarea::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+  /* Color pickers row */
+  .color-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .color-field {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .color-field label {
+    display: block;
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .color-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+
+  input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+    padding: 0;
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border-radius: 5px; border: 1px solid var(--border); }
+
+  .hex-input {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', monospace;
+    font-size: 15px;
+    width: 80px;
+    outline: none;
+  }
+
+  /* Logo upload */
+  .logo-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .logo-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
+  .logo-zone.has-logo { border-style: solid; }
+
+  .logo-zone input { display: none; }
+
+  .logo-preview {
+    max-height: 48px;
+    max-width: 200px;
+    margin-bottom: 8px;
+  }
+
+  .logo-text {
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+
+  .logo-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-zone.has-logo .logo-remove { display: flex; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    width: 100%;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .btn-primary:hover { background: #2563EB; transform: translateY(-1px); }
+  .btn-primary:disabled {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-download {
+    background: var(--green);
+    color: white;
+    width: 100%;
+    justify-content: center;
+    font-size: 16px;
+    padding: 13px 28px;
+  }
+  .btn-download:hover { background: #16A34A; }
+
+  .btn-ghost {
+    background: none;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  .btn-ghost:hover { color: var(--text); }
+
+  /* Status / loading */
+  .status {
+    display: none;
+    text-align: center;
+    padding: 32px 0;
+  }
+  .status.active { display: block; }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-text {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .status-timer {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-top: 4px;
+  }
+
+  /* Result */
+  .result {
+    display: none;
+    text-align: center;
+  }
+  .result.active { display: block; }
+
+  .result-info {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .error-box.active { display: block; }
+  .error-stage {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+  .error-msg {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  /* History */
+  .history {
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+  .history.active { display: block; }
+
+  .history-turn {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-turn:last-child { border-bottom: none; }
+
+  .history-role {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .history-role.assistant { color: var(--green); }
+
+  .history-content {
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    max-height: 60px;
+    overflow: hidden;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 16px;
+    color: #FFFFFF;
+    opacity: 0.90;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px;">
+    <img src="/static/header-logo.png" alt="Logo" style="height:48px; width:48px; object-fit:contain;" onerror="this.style.display='none'">
+    <h1>Deck <span class="accent">Factory</span></h1>
+  </div>
+  <p class="subtitle">
+    Describe your presentation. Pick your brand colors. Upload a logo.
+    AI generates a polished PowerPoint on this machine.
+  </p>
+
+  <!-- Error display -->
+  <div class="error-box" id="errorBox">
+    <div class="error-stage" id="errorStage"></div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- History -->
+  <div class="history card" id="historyPanel">
+    <div class="card-title">Conversation</div>
+    <div id="historyContent"></div>
+  </div>
+
+  <!-- Prompt -->
+  <div class="card" id="promptCard">
+    <div class="card-title">What should the deck be about?</div>
+    <div style="font-size:17px; color:var(--text-muted); margin-bottom:12px; line-height:1.4;">Providing a rough outline of the deck will result in better outputs by the AI.</div>
+    <textarea id="promptInput"
+      placeholder="Create a pitch deck about the benefits of on-premises AI. Cover data sovereignty, reduced token costs, and latency..."></textarea>
+  </div>
+
+  <!-- Title -->
+  <div class="card">
+    <div class="card-title">Deck Title (optional)</div>
+    <input type="text" id="deckTitle"
+      placeholder="e.g. Strategic AI Opportunities For HP Sales Team in Healthcare Vertical"
+      style="width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:18px; padding:12px 16px; outline:none; transition: border-color 0.2s;"
+      onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 0 0 3px var(--accent-glow)'"
+      onblur="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
+  </div>
+
+  <!-- Colors -->
+  <div class="card">
+    <div class="card-title">Brand Colors (optional)</div>
+    <div class="color-row">
+      <div class="color-field">
+        <label>Background</label>
+        <div class="color-input-wrap">
+          <input type="color" id="bgColor" value="#FFFFFF" oninput="syncHex(this, 'bgHex')">
+          <input class="hex-input" id="bgHex" value="#FFFFFF" oninput="syncColor(this, 'bgColor')">
+        </div>
+      </div>
+      <div class="color-field">
+        <label>Text</label>
+        <div class="color-input-wrap">
+          <input type="color" id="textColor" value="#000000" oninput="syncHex(this, 'textHex')">
+          <input class="hex-input" id="textHex" value="#000000" oninput="syncColor(this, 'textColor')">
+        </div>
+      </div>
+      <div class="color-field">
+        <label>Highlight</label>
+        <div class="color-input-wrap">
+          <input type="color" id="highlightColor" value="#024AD8" oninput="syncHex(this, 'highlightHex')">
+          <input class="hex-input" id="highlightHex" value="#024AD8" oninput="syncColor(this, 'highlightColor')">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logo -->
+  <div class="card">
+    <div class="card-title">Logo (optional)</div>
+    <div class="logo-zone" id="logoZone" onclick="document.getElementById('logoFile').click()">
+      <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml,image/webp" onchange="handleLogoUpload(this)">
+      <img class="logo-preview" id="logoPreview" style="display:none">
+      <div class="logo-text" id="logoText">Click or drag to upload a logo (PNG, JPG, SVG)</div>
+      <button class="logo-remove" id="logoRemove" onclick="event.stopPropagation(); removeLogo()">x</button>
+    </div>
+  </div>
+
+  <!-- Generate button -->
+  <button class="btn btn-primary" id="btnGenerate" onclick="generate()">
+    Generate Deck
+  </button>
+
+  <!-- Loading -->
+  <div class="status" id="loadingStatus">
+    <div class="spinner"></div>
+    <div class="status-text" id="statusText">Generating your deck...</div>
+    <div class="status-timer" id="statusTimer">0.0s</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result card" id="resultCard">
+    <div class="card-title">Your deck is ready</div>
+    <div class="result-info" id="resultInfo"></div>
+    <a class="btn btn-download" id="btnDownload" href="#">Download .pptx</a>
+    <div style="margin-top: 16px">
+      <textarea id="refineInput" placeholder="Change slide 3 to a chart showing quarterly revenue..." style="min-height: 70px;"></textarea>
+      <button class="btn btn-primary" onclick="refine()" style="margin-top: 8px;">Refine Deck</button>
+    </div>
+    <button class="btn btn-ghost" onclick="resetAll()" style="margin-top: 8px;">Start Over</button>
+  </div>
+
+  <div class="footer">
+    Powered by HP ZGX Nano &middot; Qwen3.6-27B-FP8 &middot; vLLM 
+  </div>
+</div>
+
+<script>
+  let sessionId = '';
+  let timerInterval = null;
+
+  function syncHex(colorInput, hexId) {
+    document.getElementById(hexId).value = colorInput.value;
+  }
+
+  function syncColor(hexInput, colorId) {
+    const val = hexInput.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      document.getElementById(colorId).value = val;
+    }
+  }
+
+  function getColors() {
+    return {
+      bg_color: document.getElementById('bgHex').value,
+      text_color: document.getElementById('textHex').value,
+      highlight_color: document.getElementById('highlightHex').value,
+    };
+  }
+
+  async function handleLogoUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const resp = await fetch('/api/upload-logo', { method: 'POST', body: formData });
+      const data = await resp.json();
+
+      if (data.error) {
+        showError('upload', data.message || 'Logo upload failed');
+        return;
+      }
+
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('logoPreview').src = e.target.result;
+        document.getElementById('logoPreview').style.display = 'block';
+        document.getElementById('logoText').textContent = file.name;
+        document.getElementById('logoZone').classList.add('has-logo');
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      showError('upload', 'Failed to upload logo: ' + err.message);
+    }
+  }
+
+  async function removeLogo() {
+    await fetch('/api/logo', { method: 'DELETE' });
+    document.getElementById('logoPreview').style.display = 'none';
+    document.getElementById('logoText').textContent = 'Click or drag to upload a logo (PNG, JPG, SVG)';
+    document.getElementById('logoZone').classList.remove('has-logo');
+    document.getElementById('logoFile').value = '';
+  }
+
+  function showError(stage, message) {
+    document.getElementById('errorStage').textContent = stage;
+    document.getElementById('errorMsg').textContent = message;
+    document.getElementById('errorBox').classList.add('active');
+  }
+
+  function clearError() {
+    document.getElementById('errorBox').classList.remove('active');
+  }
+
+  function startTimer() {
+    const start = Date.now();
+    document.getElementById('statusTimer').textContent = '0.0s';
+    timerInterval = setInterval(() => {
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      document.getElementById('statusTimer').textContent = elapsed + 's';
+    }, 100);
+  }
+
+  function stopTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+  }
+
+  function setLoading(show, text) {
+    document.getElementById('loadingStatus').classList.toggle('active', show);
+    if (text) document.getElementById('statusText').textContent = text;
+    document.getElementById('btnGenerate').disabled = show;
+    if (show) startTimer(); else stopTimer();
+  }
+
+  function addToHistory(role, content) {
+    const panel = document.getElementById('historyContent');
+    const turn = document.createElement('div');
+    turn.className = 'history-turn';
+    turn.innerHTML = `
+      <div class="history-role ${role}">${role}</div>
+      <div class="history-content">${escapeHtml(content.substring(0, 200))}${content.length > 200 ? '...' : ''}</div>
+    `;
+    panel.appendChild(turn);
+    document.getElementById('historyPanel').classList.add('active');
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async function generate() {
+    const prompt = document.getElementById('promptInput').value.trim();
+    if (!prompt) return;
+
+    clearError();
+    setLoading(true, 'Generating your deck...');
+    document.getElementById('resultCard').classList.remove('active');
+
+    const colors = getColors();
+
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          session_id: sessionId,
+          deck_title: document.getElementById('deckTitle').value.trim(),
+          ...colors,
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (data.error) {
+        showError(data.stage, data.message);
+        setLoading(false);
+        return;
+      }
+
+      sessionId = data.session_id;
+      addToHistory('user', prompt);
+      addToHistory('assistant', `Generated ${data.slides} slides: ${data.layouts.join(', ')}`);
+
+      document.getElementById('resultInfo').textContent =
+        `${data.slides} slides generated in ${data.elapsed}s`;
+      document.getElementById('btnDownload').href = data.download_url;
+      document.getElementById('resultCard').classList.add('active');
+      setLoading(false);
+
+    } catch (err) {
+      showError('network', 'Request failed: ' + err.message);
+      setLoading(false);
+    }
+  }
+
+  async function refine() {
+    const prompt = document.getElementById('refineInput').value.trim();
+    if (!prompt || !sessionId) return;
+
+    clearError();
+    setLoading(true, 'Refining your deck...');
+
+    const colors = getColors();
+
+    try {
+      const resp = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          session_id: sessionId,
+          deck_title: document.getElementById('deckTitle').value.trim(),
+          ...colors,
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (data.error) {
+        showError(data.stage, data.message);
+        setLoading(false);
+        return;
+      }
+
+      addToHistory('user', prompt);
+      addToHistory('assistant', `Refined to ${data.slides} slides: ${data.layouts.join(', ')}`);
+
+      document.getElementById('resultInfo').textContent =
+        `${data.slides} slides refined in ${data.elapsed}s`;
+      document.getElementById('btnDownload').href = data.download_url;
+      document.getElementById('refineInput').value = '';
+      setLoading(false);
+
+    } catch (err) {
+      showError('network', 'Request failed: ' + err.message);
+      setLoading(false);
+    }
+  }
+
+  function resetAll() {
+    if (sessionId) {
+      fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+    }
+    sessionId = '';
+    document.getElementById('promptInput').value = '';
+    document.getElementById('deckTitle').value = '';
+    document.getElementById('refineInput').value = '';
+    document.getElementById('resultCard').classList.remove('active');
+    document.getElementById('historyPanel').classList.remove('active');
+    document.getElementById('historyContent').innerHTML = '';
+    clearError();
+  }
+</script>
+</body>
+</html>

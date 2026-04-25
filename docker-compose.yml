@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  vllm:
+    image: vllm/vllm-openai:cu130-nightly
+    container_name: deck-factory-vllm
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ${HF_CACHE:-/home/curtburk/.cache/huggingface}:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    ipc: host
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+    command: >
+      --model Qwen/Qwen3.6-27B-FP8
+      --max-model-len 32768
+      --gpu-memory-utilization 0.85
+      --enable-prefix-caching
+      --language-model-only
+      --default-chat-template-kwargs '{"enable_thinking": false}'
+      --max-cudagraph-capture-size 256
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: deck-factory-app
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+      - ./logos:/app/logos
+      - ./brand.json:/app/brand.json
+    environment:
+      - VLLM_URL=http://vllm:8000
+      - VLLM_MODEL=Qwen/Qwen3.6-27B-FP8
+    depends_on:
+      vllm:
+        condition: service_healthy
+    restart: unless-stopped

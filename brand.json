@@ -1,0 +1,20 @@
+{
+  "colors": {
+    "darkBg": "FFFFFF",
+    "lightBg": "FFFFFF",
+    "darkText": "000000",
+    "lightText": "FFFFFF",
+    "mutedText": "000000",
+    "primary": "024AD8",
+    "secondary": "024AD8",
+    "accent": "024AD8",
+    "highlight": "024AD8",
+    "chartColors": [
+      "024AD8"
+    ]
+  },
+  "fonts": {
+    "headerFont": "Georgia",
+    "bodyFont": "Calibri"
+  }
+}
