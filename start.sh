@@ -1,0 +1,198 @@
+#!/bin/bash
+# =============================================================================
+# HP Deck Factory - Start Script
+# Starts vLLM inference engine and the web application
+# =============================================================================
+set -e
+
+VLLM_CONTAINER_NAME="deck-factory-vllm"
+VLLM_IMAGE="vllm/vllm-openai:cu130-nightly"
+VLLM_MODEL="Qwen/Qwen3.6-27B-FP8"
+VLLM_PORT=8000
+APP_PORT=8888
+HF_CACHE="${HF_CACHE:-$HOME/.cache/huggingface}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── Pre-flight checks ───────────────────────────────────────────────────────
+
+echo ""
+echo "=============================================="
+echo "  HP Deck Factory - Preflight Checks"
+echo "=============================================="
+echo ""
+
+# Check Docker is running
+if ! docker info &>/dev/null; then
+    echo "  [FAIL] Docker daemon is not running."
+    echo "         Start it with: sudo systemctl start docker"
+    echo ""
+    exit 1
+fi
+echo "  [OK] Docker is running"
+
+# Check NVIDIA GPU
+if ! nvidia-smi &>/dev/null; then
+    echo "  [FAIL] NVIDIA GPU not detected."
+    echo "         Check driver installation with: nvidia-smi"
+    echo ""
+    exit 1
+fi
+GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)
+echo "  [OK] GPU detected: $GPU_NAME"
+
+# Check Node.js
+if ! command -v node &>/dev/null; then
+    echo "  [FAIL] Node.js not found."
+    echo "         Install with: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && sudo apt install nodejs"
+    echo ""
+    exit 1
+fi
+NODE_VERSION=$(node --version)
+echo "  [OK] Node.js $NODE_VERSION"
+
+# Check Python
+if ! command -v python3 &>/dev/null; then
+    echo "  [FAIL] Python3 not found."
+    echo ""
+    exit 1
+fi
+PYTHON_VERSION=$(python3 --version 2>&1)
+echo "  [OK] $PYTHON_VERSION"
+
+# Check Node dependencies
+if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
+    echo "  [INFO] Installing Node.js dependencies..."
+    cd "$SCRIPT_DIR" && npm install --production 2>&1 | tail -1
+fi
+echo "  [OK] Node.js dependencies installed"
+
+# Check Python dependencies
+if ! python3 -c "import fastapi, httpx, pydantic" 2>/dev/null; then
+    echo "  [INFO] Installing Python dependencies..."
+    pip install -r "$SCRIPT_DIR/requirements.txt" -q
+fi
+echo "  [OK] Python dependencies installed"
+
+# Check vLLM image exists
+if ! docker image inspect "$VLLM_IMAGE" &>/dev/null; then
+    echo "  [FAIL] vLLM Docker image not found: $VLLM_IMAGE"
+    echo "         Pull it with: docker pull $VLLM_IMAGE"
+    echo ""
+    exit 1
+fi
+echo "  [OK] vLLM Docker image available"
+
+# Check HuggingFace cache
+echo "  [OK] HF cache: $HF_CACHE"
+
+echo ""
+echo "  All checks passed."
+echo ""
+
+# ── Kill existing containers ────────────────────────────────────────────────
+
+if docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+    echo "  Removing existing vLLM container..."
+    docker rm -f "$VLLM_CONTAINER_NAME" &>/dev/null
+fi
+
+# ── Detect host LAN IP ──────────────────────────────────────────────────────
+
+if [ -z "$HOST_IP" ]; then
+    HOST_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+fi
+if [ -z "$HOST_IP" ]; then
+    HOST_IP=$(hostname -I | awk '{print $1}')
+fi
+if [ -z "$HOST_IP" ]; then
+    HOST_IP="localhost"
+fi
+
+# ── Start vLLM ──────────────────────────────────────────────────────────────
+
+echo ""
+echo "=============================================="
+echo "  Starting vLLM ($VLLM_MODEL)"
+echo "=============================================="
+echo ""
+echo "  This may take 5-10 minutes on first startup"
+echo "  (model download + weight loading + CUDA compilation)"
+echo ""
+
+docker run -d \
+    --gpus all \
+    --name "$VLLM_CONTAINER_NAME" \
+    -v "$HF_CACHE:/root/.cache/huggingface" \
+    -p "${VLLM_PORT}:8000" \
+    --ipc=host \
+    "$VLLM_IMAGE" \
+    --model "$VLLM_MODEL" \
+    --max-model-len 32768 \
+    --language-model-only \
+    --default-chat-template-kwargs '{"enable_thinking": false}' \
+    --max-cudagraph-capture-size 256 \
+    > /dev/null
+
+echo "  vLLM container started. Waiting for model to load..."
+echo ""
+
+# Wait for vLLM to become healthy
+ATTEMPTS=0
+MAX_ATTEMPTS=120
+while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+    if curl -sf "http://localhost:${VLLM_PORT}/health" &>/dev/null; then
+        echo ""
+        echo "  [OK] vLLM is ready!"
+        break
+    fi
+
+    ATTEMPTS=$((ATTEMPTS + 1))
+    ELAPSED=$((ATTEMPTS * 5))
+
+    # Show progress every 30 seconds
+    if [ $((ATTEMPTS % 6)) -eq 0 ]; then
+        echo "  Still loading... (${ELAPSED}s elapsed)"
+    fi
+
+    # Check if container crashed
+    if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+        echo ""
+        echo "  [FAIL] vLLM container exited unexpectedly."
+        echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
+        echo ""
+        exit 1
+    fi
+
+    sleep 5
+done
+
+if [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; then
+    echo ""
+    echo "  [FAIL] vLLM did not become healthy after 10 minutes."
+    echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
+    echo ""
+    exit 1
+fi
+
+# ── Start the web app ───────────────────────────────────────────────────────
+
+echo ""
+echo "=============================================="
+echo "  HP Deck Factory"
+echo "=============================================="
+echo ""
+echo "  Open in your browser:"
+echo ""
+echo "    http://${HOST_IP}:${APP_PORT}"
+echo ""
+echo "  vLLM:  http://${HOST_IP}:${VLLM_PORT}/health"
+echo "  App:   http://${HOST_IP}:${APP_PORT}/api/health"
+echo ""
+echo "  Press Ctrl+C to stop the application."
+echo "  To also stop vLLM: docker kill $VLLM_CONTAINER_NAME"
+echo ""
+echo "=============================================="
+echo ""
+
+cd "$SCRIPT_DIR"
+python3 server.py
