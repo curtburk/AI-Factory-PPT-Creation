@@ -95,7 +95,7 @@ When the startup finishes, you'll see a URL in the terminal. Open it in your bro
 
 **http://192.xxx.xx.xxx:8888**
 
-(Replace `192.xxx.xx.xxx` with the actual IP of the ZGX Nano if different.)
+(The actual IP of your machine will print with the clickable link)
 
 ---
 
