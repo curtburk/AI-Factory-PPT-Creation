@@ -193,6 +193,18 @@ fi
 
 # ── Start the web app ───────────────────────────────────────────────────────
 
+cd "$SCRIPT_DIR"
+python3 server.py &
+APP_PID=$!
+
+# Wait for the web app to become ready
+for i in $(seq 1 30); do
+    if curl -sf "http://localhost:${APP_PORT}/api/health" &>/dev/null; then
+        break
+    fi
+    sleep 1
+done
+
 echo ""
 echo "=============================================="
 echo "  HP Deck Factory"
@@ -211,5 +223,8 @@ echo ""
 echo "=============================================="
 echo ""
 
-cd "$SCRIPT_DIR"
-python3 server.py
+# Handle Ctrl+C gracefully
+trap "echo ''; echo '  Stopping web app...'; kill $APP_PID 2>/dev/null; exit 0" INT TERM
+
+# Keep the script alive until the server exits
+wait $APP_PID
