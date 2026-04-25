@@ -89,11 +89,94 @@ echo ""
 echo "  All checks passed."
 echo ""
 
-# ── Kill existing containers ────────────────────────────────────────────────
+# ── Start or reuse vLLM ──────────────────────────────────────────────────────
 
-if docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
-    echo "  Removing existing vLLM container..."
+VLLM_RUNNING=false
+
+# Check if vLLM container is already running and healthy
+if docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+    if curl -sf "http://localhost:${VLLM_PORT}/health" &>/dev/null; then
+        echo ""
+        echo "=============================================="
+        echo "  vLLM already running and healthy - skipping startup"
+        echo "=============================================="
+        echo ""
+        VLLM_RUNNING=true
+    else
+        echo "  vLLM container exists but not healthy. Restarting..."
+        docker rm -f "$VLLM_CONTAINER_NAME" &>/dev/null
+    fi
+elif docker ps -a --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+    echo "  Removing stopped vLLM container..."
     docker rm -f "$VLLM_CONTAINER_NAME" &>/dev/null
+fi
+
+if [ "$VLLM_RUNNING" = false ]; then
+    echo ""
+    echo "=============================================="
+    echo "  Starting vLLM ($VLLM_MODEL)"
+    echo "=============================================="
+    echo ""
+    echo "  This takes 5-10 minutes (model loading + CUDA compilation)"
+    echo "  TIP: Leave vLLM running between sessions to skip this wait."
+    echo "       Just Ctrl+C the web app, not the vLLM container."
+    echo ""
+
+    docker run -d \
+        --gpus all \
+        --name "$VLLM_CONTAINER_NAME" \
+        --restart unless-stopped \
+        -v "$HF_CACHE:/root/.cache/huggingface" \
+        -p "${VLLM_PORT}:8000" \
+        --ipc=host \
+        "$VLLM_IMAGE" \
+        --model "$VLLM_MODEL" \
+        --max-model-len 32768 \
+        --language-model-only \
+        --default-chat-template-kwargs '{"enable_thinking": false}' \
+        --max-cudagraph-capture-size 256 \
+        > /dev/null
+
+    echo "  vLLM container started. Waiting for model to load..."
+    echo ""
+
+    # Wait for vLLM to become healthy
+    ATTEMPTS=0
+    MAX_ATTEMPTS=120
+    while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+        if curl -sf "http://localhost:${VLLM_PORT}/health" &>/dev/null; then
+            echo ""
+            echo "  [OK] vLLM is ready!"
+            break
+        fi
+
+        ATTEMPTS=$((ATTEMPTS + 1))
+        ELAPSED=$((ATTEMPTS * 5))
+
+        # Show progress every 30 seconds
+        if [ $((ATTEMPTS % 6)) -eq 0 ]; then
+            echo "  Still loading... (${ELAPSED}s elapsed)"
+        fi
+
+        # Check if container crashed
+        if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
+            echo ""
+            echo "  [FAIL] vLLM container exited unexpectedly."
+            echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
+            echo ""
+            exit 1
+        fi
+
+        sleep 5
+    done
+
+    if [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; then
+        echo ""
+        echo "  [FAIL] vLLM did not become healthy after 10 minutes."
+        echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
+        echo ""
+        exit 1
+    fi
 fi
 
 # ── Detect host LAN IP ──────────────────────────────────────────────────────
@@ -106,72 +189,6 @@ if [ -z "$HOST_IP" ]; then
 fi
 if [ -z "$HOST_IP" ]; then
     HOST_IP="localhost"
-fi
-
-# ── Start vLLM ──────────────────────────────────────────────────────────────
-
-echo ""
-echo "=============================================="
-echo "  Starting vLLM ($VLLM_MODEL)"
-echo "=============================================="
-echo ""
-echo "  This may take 5-10 minutes on first startup"
-echo "  (model download + weight loading + CUDA compilation)"
-echo ""
-
-docker run -d \
-    --gpus all \
-    --name "$VLLM_CONTAINER_NAME" \
-    -v "$HF_CACHE:/root/.cache/huggingface" \
-    -p "${VLLM_PORT}:8000" \
-    --ipc=host \
-    "$VLLM_IMAGE" \
-    --model "$VLLM_MODEL" \
-    --max-model-len 32768 \
-    --language-model-only \
-    --default-chat-template-kwargs '{"enable_thinking": false}' \
-    --max-cudagraph-capture-size 256 \
-    > /dev/null
-
-echo "  vLLM container started. Waiting for model to load..."
-echo ""
-
-# Wait for vLLM to become healthy
-ATTEMPTS=0
-MAX_ATTEMPTS=120
-while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-    if curl -sf "http://localhost:${VLLM_PORT}/health" &>/dev/null; then
-        echo ""
-        echo "  [OK] vLLM is ready!"
-        break
-    fi
-
-    ATTEMPTS=$((ATTEMPTS + 1))
-    ELAPSED=$((ATTEMPTS * 5))
-
-    # Show progress every 30 seconds
-    if [ $((ATTEMPTS % 6)) -eq 0 ]; then
-        echo "  Still loading... (${ELAPSED}s elapsed)"
-    fi
-
-    # Check if container crashed
-    if ! docker ps --format '{{.Names}}' | grep -q "^${VLLM_CONTAINER_NAME}$"; then
-        echo ""
-        echo "  [FAIL] vLLM container exited unexpectedly."
-        echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
-        echo ""
-        exit 1
-    fi
-
-    sleep 5
-done
-
-if [ $ATTEMPTS -ge $MAX_ATTEMPTS ]; then
-    echo ""
-    echo "  [FAIL] vLLM did not become healthy after 10 minutes."
-    echo "         Check logs with: docker logs $VLLM_CONTAINER_NAME"
-    echo ""
-    exit 1
 fi
 
 # ── Start the web app ───────────────────────────────────────────────────────
