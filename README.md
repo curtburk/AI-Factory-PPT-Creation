@@ -69,13 +69,33 @@ If you need to authenticate with Hugging Face:
 pip install huggingface_hub
 huggingface-cli login
 ```
+
 ### Step 5: Start the application
 
 ```bash
 ./start.sh
 ```
 
-Wait for the startup to complete. When you see the local URL, open it in your browser.
+The startup script handles everything automatically:
+
+1. Checks that Docker, GPU, Node.js, and Python are available
+2. Installs any missing dependencies
+3. Starts the AI engine (vLLM) if it isn't already running
+4. Waits for the model to finish loading
+5. Launches the web application
+6. Prints the URL to open in your browser
+
+**First startup takes 5-10 minutes** because the AI model (28 GB) needs to load into GPU memory and compile optimized kernels. You'll see progress updates in the terminal.
+
+**Every subsequent startup is instant** because the script detects that the AI engine is already running and skips straight to launching the web app.
+
+### Step 6: Open in your browser
+
+When the startup finishes, you'll see a URL in the terminal. Open it in your browser:
+
+**http://192.168.10.123:8888**
+
+(Replace `192.168.10.123` with the actual IP of the ZGX Nano if different.)
 
 ---
 
@@ -178,7 +198,8 @@ docker kill $(docker ps -q)
 
 ```
 PPT-deck-factory/
-  server.py              -- Web application (FastAPI)
+  start.sh                -- Startup script (run this!)
+  server.py               -- Web application (FastAPI)
   schemas.py             -- JSON schema for deck plans (Pydantic models)
   prompts.py             -- AI system prompt
   render_deck.js         -- PowerPoint renderer (Node.js, pptxgenjs)
@@ -200,8 +221,24 @@ PPT-deck-factory/
 
 ## Stopping the Application
 
-1. In the web app terminal: press `Ctrl+C`
-2. In the vLLM terminal: press `Ctrl+C`, then `docker kill $(docker ps -q)` to clean up
+### Stopping the web app (recommended between sessions)
+
+Press `Ctrl+C` in the terminal where `start.sh` is running. This stops the web app only. The AI engine (vLLM) keeps running in the background so your next `./start.sh` is instant.
+
+### Stopping the AI engine (only if you need GPU resources for other work)
+
+> **Important:** The AI engine takes 5-10 minutes to restart. Only stop it if you need to free up GPU memory for other work (e.g., running a different demo, training a model, or using the GPU for another application). Under normal use, leave it running.
+
+```bash
+docker kill deck-factory-vllm
+docker rm deck-factory-vllm
+```
+
+To check if the AI engine is currently running:
+
+```bash
+docker ps | grep deck-factory-vllm
+```
 
 ---
 
