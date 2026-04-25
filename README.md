@@ -93,9 +93,9 @@ The startup script handles everything automatically:
 
 When the startup finishes, you'll see a URL in the terminal. Open it in your browser:
 
-**http://192.168.10.123:8888**
+**http://192.xxx.xx.xxx:8888**
 
-(Replace `192.168.10.123` with the actual IP of the ZGX Nano if different.)
+(Replace `192.xxx.xx.xxx` with the actual IP of the ZGX Nano if different.)
 
 ---
 
