@@ -69,57 +69,13 @@ If you need to authenticate with Hugging Face:
 pip install huggingface_hub
 huggingface-cli login
 ```
-
-### Step 5: Start vLLM (the AI inference engine)
-
-Open a terminal and run:
+### Step 5: Start the application
 
 ```bash
-docker run --gpus all \
-  -v ~/.cache/huggingface:/root/.cache/huggingface \
-  -p 8000:8000 \
-  --ipc=host \
-  vllm/vllm-openai:cu130-nightly \
-  --model Qwen/Qwen3.6-27B-FP8 \
-  --max-model-len 32768 \
-  --language-model-only \
-  --default-chat-template-kwargs '{"enable_thinking": false}' \
-  --max-cudagraph-capture-size 256
+./start.sh
 ```
 
-**Wait until you see this line in the output:**
-
-```
-INFO:     Uvicorn running on http://0.0.0.0:8000
-```
-
-This means the model is loaded and ready. First startup takes 5-10 minutes (model download + weight loading + CUDA graph compilation). Subsequent starts are faster.
-
-**Leave this terminal open.** vLLM must stay running.
-
-### Step 6: Start the web application
-
-Open a **second terminal** and run:
-
-```bash
-cd ~/Desktop/PPT-deck-factory
-python server.py
-```
-
-You should see:
-
-```
-[STARTUP] Deck Factory v2 starting...
-[STARTUP] vLLM healthy (attempt 1)
-[STARTUP] Models loaded: ['Qwen/Qwen3.6-27B-FP8']
-INFO:     Uvicorn running on http://0.0.0.0:8888
-```
-
-### Step 7: Open in your browser
-
-Go to: **http://192.168.10.123:8888**
-
-(Replace `192.168.10.123` with the actual IP of the ZGX Nano if different.)
+Wait for the startup to complete. When you see the local URL, open it in your browser.
 
 ---
 
