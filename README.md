@@ -107,7 +107,7 @@ When the startup finishes, you'll see a URL in the terminal. Open it in your bro
 
    ```
    Create a 6-slide deck for our sales team about AI in healthcare.
-   
+   1. Title slide 
    2. The market opportunity
    3. Why HP is uniquely positioned
    4. A use case of AI in healthcare
