@@ -59,21 +59,11 @@ pip install -r requirements.txt
 npm install
 ```
 
-### Step 4: Download the AI model (first time only)
-
-The model (~28 GB) will be downloaded automatically the first time vLLM starts. Make sure you have enough disk space.
-
-If you need to authenticate with Hugging Face:
-
-```bash
-pip install huggingface_hub
-huggingface-cli login
-```
-
-### Step 5: Start the application
+### Step 4: Start the application
 
 ```bash
 ./start.sh
+**Note: The model (~28 GB) will be downloaded automatically the first time vLLM starts. Make sure you have enough disk space and this adds a few minutes to first startup**
 ```
 
 The startup script handles everything automatically:
