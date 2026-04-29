@@ -44,7 +44,38 @@ LOGOS_DIR.mkdir(exist_ok=True)
 VLLM_URL = os.getenv("VLLM_URL", "http://localhost:8000")
 VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3.6-27B-FP8")
 RENDERER = BASE_DIR / "render_deck.js"
+CONTEXT_DIR = BASE_DIR / "context"
 MAX_HISTORY_TURNS = 8  # keep last N user/assistant pairs
+
+# ── Company Context ───────────────────────────────────────────────────────────
+
+def load_company_context() -> str:
+    """Load all .md files from context/ directory and return as a single string."""
+    if not CONTEXT_DIR.exists():
+        return ""
+    parts = []
+    for md_file in sorted(CONTEXT_DIR.glob("*.md")):
+        content = md_file.read_text().strip()
+        if content:
+            parts.append(content)
+    return "\n\n".join(parts)
+
+
+COMPANY_CONTEXT = load_company_context()
+
+
+def get_full_system_prompt() -> str:
+    """Combine the system prompt with company context."""
+    if COMPANY_CONTEXT:
+        return (
+            SYSTEM_PROMPT
+            + "\n\n--- COMPANY CONTEXT ---\n"
+            + "Use the following information about the company when generating deck content. "
+            + "Reference these products, statistics, and value propositions when relevant to the user's request. "
+            + "Use only the approved statistics listed below for stat_callout slides.\n\n"
+            + COMPANY_CONTEXT
+        )
+    return SYSTEM_PROMPT
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -122,7 +153,7 @@ sessions: dict[str, list[dict]] = {}
 def get_or_create_session(session_id: str) -> list[dict]:
     if session_id not in sessions:
         sessions[session_id] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": get_full_system_prompt()},
         ]
         session_log.info(f"Session created: {session_id}")
     return sessions[session_id]
@@ -187,7 +218,7 @@ async def call_vllm(messages: list[dict], req_id: str) -> str:
     payload = {
         "model": VLLM_MODEL,
         "messages": messages,
-        "max_tokens": 32768,
+        "max_tokens": 16384,
         "temperature": 0.7,
         "response_format": {
             "type": "json_schema",
@@ -425,6 +456,16 @@ async def on_startup():
     startup_log.info(f"Renderer: {RENDERER}")
     startup_log.info(f"Output dir: {OUTPUT_DIR}")
     startup_log.info(f"Logs dir: {LOGS_DIR}")
+
+    # Log company context status
+    if COMPANY_CONTEXT:
+        context_files = list(CONTEXT_DIR.glob("*.md"))
+        startup_log.info(
+            f"Company context loaded: {len(context_files)} file(s), "
+            f"{len(COMPANY_CONTEXT)} chars"
+        )
+    else:
+        startup_log.info("No company context found (context/*.md)")
 
     # Check renderer
     if not RENDERER.exists():
