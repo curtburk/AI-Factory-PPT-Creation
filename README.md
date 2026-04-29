@@ -43,8 +43,8 @@ Before starting, make sure the following are installed on the HP ZGX Nano:
 
 ```bash
 cd ~/Desktop
-git clone https://github.com/curtburk/AI-PPT-deck-factory.git
-cd AI-PPT-deck-factory
+git clone https://github.com/curtburk/AI-Factory-PPT-Creation.git
+cd AI-Factory-PPT-Creation
 ```
 
 ### Step 2: Install Python dependencies
