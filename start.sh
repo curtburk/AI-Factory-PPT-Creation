@@ -135,6 +135,8 @@ if [ "$VLLM_RUNNING" = false ]; then
         --language-model-only \
         --default-chat-template-kwargs '{"enable_thinking": false}' \
         --max-cudagraph-capture-size 256 \
+        --enable-prefix-caching \
+        --kv-cache-dtype fp8_e4m3 \
         > /dev/null
 
     echo "  vLLM container started. Waiting for model to load..."
