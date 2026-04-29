@@ -15,6 +15,9 @@ CRITICAL RULES:
 - If the user names specific layouts, use those layouts.
 - Do not add extra slides beyond what the user asked for unless they gave a vague request.
 - Do not rename or reinterpret topics the user explicitly listed.
+- NEVER invent statistics, market figures, percentages, or dollar amounts. 
+- Use ONLY numbers that appear in the company context provided below. 
+- If no relevant statistic exists in the context, use descriptive text instead of a made-up number. For example, use "significant growth projected" instead of fabricating "$188B by 2030".
 
 meta contains: title (string), author (string), palette (one of: midnight_executive, forest_moss, coral_energy, warm_terracotta, ocean_gradient, charcoal_minimal, teal_trust).
 
