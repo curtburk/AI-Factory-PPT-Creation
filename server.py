@@ -42,7 +42,7 @@ LOGS_DIR.mkdir(exist_ok=True)
 LOGOS_DIR.mkdir(exist_ok=True)
 
 VLLM_URL = os.getenv("VLLM_URL", "http://localhost:8000")
-VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3.6-27B-FP8")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3-14B-AWQ")
 RENDERER = BASE_DIR / "render_deck.js"
 CONTEXT_DIR = BASE_DIR / "context"
 MAX_HISTORY_TURNS = 8  # keep last N user/assistant pairs

@@ -7,7 +7,7 @@ set -e
 
 VLLM_CONTAINER_NAME="deck-factory-vllm"
 VLLM_IMAGE="vllm/vllm-openai:cu130-nightly"
-VLLM_MODEL="Qwen/Qwen3.6-27B-FP8"
+VLLM_MODEL="Qwen/Qwen3-14B-AWQ"
 VLLM_PORT=8000
 APP_PORT=8888
 HF_CACHE="${HF_CACHE:-$HOME/.cache/huggingface}"
@@ -125,13 +125,15 @@ if [ "$VLLM_RUNNING" = false ]; then
     docker run -d \
         --gpus all \
         --name "$VLLM_CONTAINER_NAME" \
-        --restart unless-stopped \
+         \
         -v "$HF_CACHE:/root/.cache/huggingface" \
         -p "${VLLM_PORT}:8000" \
         --ipc=host \
         "$VLLM_IMAGE" \
         --model "$VLLM_MODEL" \
         --max-model-len 32768 \
+        --gpu-memory-utilization 0.60 \
+        --quantization awq_marlin \
         --language-model-only \
         --default-chat-template-kwargs '{"enable_thinking": false}' \
         --max-cudagraph-capture-size 256 \
